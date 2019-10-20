@@ -1,0 +1,24 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1562868244669.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3771391848",
+    "id" : "168537AC",
+    "lastKnownWriteTime" : 1563011776,
+    "last_content_update" : -2147483648,
+    "path" : "C:/git/pgkallin/myApp/server.R",
+    "project_path" : "server.R",
+    "properties" : {
+        "cursorPosition" : "265,34",
+        "docOutlineVisible" : "0",
+        "scrollLine" : "0",
+        "tempName" : "Untitled2"
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

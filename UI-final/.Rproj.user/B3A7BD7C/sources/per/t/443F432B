@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1562868250820.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "4070287152",
+    "id" : "443F432B",
+    "lastKnownWriteTime" : 1561989254,
+    "last_content_update" : 1561989254,
+    "path" : "C:/git/pgkallin/myApp/app.R",
+    "project_path" : "app.R",
+    "properties" : {
+        "cursorPosition" : "2,22",
+        "docOutlineVisible" : "0",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
