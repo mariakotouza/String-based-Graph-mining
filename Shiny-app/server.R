@@ -2,6 +2,7 @@
 
 # use the below options code if you wish to increase the file input limit, in this example file input limit is increased from 5MB to 9MB
 options(shiny.maxRequestSize = 200*1024^2)
+source("helper.R")
 
 shinyServer(function(input,output,session){
   
@@ -18,14 +19,25 @@ shinyServer(function(input,output,session){
     #file1 <- input$file
     if(length(file1$datapath)==0){return()} 
     data=read.csv(file=as.character(file1$datapath), sep=input$sep, header = input$header)
-    data=data[sample(1:nrow(data),50, replace = FALSE),]
+    data=data[sample(1:nrow(data),500, replace = FALSE),]
     #sim=stringdistances(seq=as.character(data[,input$seqSelect]),algo=input$simSelect)
     values$indexes=1:nrow(data)
     values$uni=NULL
+    cols_data <<- colnames(data)
     data
   })
   
   
+  output$uiSSLColNames <- renderUI({
+    if (is.null(fulldata())) return()
+    selectInput("sslClassesColnumSelect",choices=list("sslClassesColnum"=cols_data),selected=cols_data[1],label="Select a column/attribute which includes the known labels")
+  })
+  
+  
+  output$uiSSLRefNames <- renderUI({
+    if (is.null(fulldata())) return()
+    selectInput("sslRefClassesSelect",choices=list("sslRefClasses"=c("Not applicable",cols_data)),selected="Not applicable",label="Select a column/attribute which includes all the labels (if applicable)")
+  })
   
   
   observeEvent(input$simButton,{
@@ -36,17 +48,15 @@ shinyServer(function(input,output,session){
       sim[sim==0]=0.00001
       shinyalert("Distances Calculated", type = "success")
       }))
-    values$sim=sim
+    values$sim=as.matrix(sim)[values$indexes,values$indexes]
     
   })
   
   
-  
-  
   observeEvent(input$graphButton, {
     if (is.null(values$sim )) {return()}
-    templist=list(fulldata()[values$indexes,],as.matrix(values$sim)[values$indexes,values$indexes])
-    
+    templist=list(fulldata()[values$indexes,],values$sim[values$indexes,values$indexes])
+
     if (input$clusterId){
       
       if (is.null(values$uni))
@@ -75,7 +85,73 @@ shinyServer(function(input,output,session){
     }
     
     
-    templist[[2]][templist[[2]]>input$slider]=0
+    
+    #templist[[2]][templist[[2]]>input$slider]=0
+    
+    #graph_construction(data, values, F, seqSelect="", input$sparsification,alpha=1,alpha1=1,alpha2=1,input$k_knn,input$slider, input$delete_edges_of_diff_classes)
+    
+    # Graph sparsification 
+    
+    
+    if (input$delete_edges_of_diff_classes){
+      actual_classes <- data$V2
+      labels <- unique(actual_classes)[which(!is.na(unique(actual_classes)))]
+      for (cl in 1:length(labels)){
+        i1 <- which(actual_classes == labels[cl])
+        i2 <- which((actual_classes != labels[cl]) & (!is.na(actual_classes)))
+        if (length(i2)>0){
+          templist[[2]][i1,i2] <- 0.99999
+          templist[[2]][i2,i1] <- 0.99999
+        }
+      }
+    }
+    
+    graph.type <- input$sparsification
+    graph_thr <- input$slider
+    k <- input$k_knn
+    
+    if (graph.type == "knn"){
+      k <- input$k_knn
+    }
+    
+    if (graph.type == "mknn"){
+      k <- input$m_k_knn
+    }
+    
+    d <- templist[[2]]
+    
+    if ((graph.type == "knn") | (graph.type == "mknn"))
+    {
+      index <- sapply(1:nrow(d),function(i)
+      {
+        return(sort(d[,i],index.return = TRUE)$ix[1:k])
+      })
+      w <- matrix(0,ncol = nrow(d),nrow = nrow(d))
+      for (i in 1:nrow(d))
+      {
+        w[index[,i],i] <- d[index[,i],i]
+      }
+    }
+    if (graph.type == "mknn"){
+      for (i in 1:nrow(d)){
+        for (j in 1:nrow(d)){
+          if (w[i,j]!=w[j,i]){
+            w[i,j] <- 0
+            w[j,i] <- 0
+          }
+        }
+      }
+    }
+    
+    if (graph.type == "enn")
+      w <- ifelse(d < graph_thr,d,0)
+    if (graph.type == "tanh")
+      w <- (tanh(alpha1 * (d - alpha2)) + 1) / 2
+    if (graph.type == "exp")
+      w <- exp(-d ^ 2 / alpha ^ 2)
+    
+    templist[[2]] <- w
+    
     ig<- graph.adjacency(templist[[2]], mode="undirected", weighted=TRUE)
     #ig=delete.edges(ig,which(E(ig)$weight>input$slider))
     
@@ -91,14 +167,16 @@ shinyServer(function(input,output,session){
         return (x[1])
     }
     
-    V(ig)$V.GENE=as.character(unlist(lapply(strsplit(as.character(V(ig)$Summary.V.GENE.and.allele),"*",fixed=TRUE), myFun)))
-    V(ig)$J.GENE=as.character(unlist(lapply(strsplit(as.character(V(ig)$Summary.J.GENE.and.allele),"*",fixed=TRUE), myFun)))
-    V(ig)$D.GENE=as.character(unlist(lapply(strsplit(as.character(V(ig)$Summary.D.GENE.and.allele),"*",fixed=TRUE), myFun)))
-    
+    if (domain == "AA"){
+      V(ig)$V.GENE=as.character(unlist(lapply(strsplit(as.character(V(ig)$Summary.V.GENE.and.allele),"*",fixed=TRUE), myFun)))
+      V(ig)$J.GENE=as.character(unlist(lapply(strsplit(as.character(V(ig)$Summary.J.GENE.and.allele),"*",fixed=TRUE), myFun)))
+      V(ig)$D.GENE=as.character(unlist(lapply(strsplit(as.character(V(ig)$Summary.D.GENE.and.allele),"*",fixed=TRUE), myFun)))
+    }
     
     V(ig)$color.background=colors[visualiseGenes(data=V(ig)$dataName)$label]
     V(ig)$color.border=V(ig)$color.background
-    V(ig)$title<-paste("Sequence frequence cluster_id: ",V(ig)$freq_cluster_id,"<br>V.Gene: ",V(ig)$Summary.V.GENE.and.allele,"<br>CDR3: ",V(ig)$Summary.AA.JUNCTION)
+    #!!!!!!!!!!!!!!!!
+    V(ig)$title<-paste("Sequence frequence cluster_id: ",V(ig)$freq_cluster_id,"<br>V.Gene: ","<br>CDR3: ")
     
     m=(1-E(ig)$weight-min(1-E(ig)$weight))/(max(1-E(ig)$weight)-min(1-E(ig)$weight))
     
@@ -121,7 +199,7 @@ shinyServer(function(input,output,session){
     x=match(x,sort(unique(x),na.last = TRUE))
     values$forest=x
     values$ig=ig
-    
+    values$sim <- templist[[2]]
     
     
     y=table(values$forest)
@@ -139,7 +217,6 @@ shinyServer(function(input,output,session){
     mstValues$edges=NULL
     
   })
-  
   
   
   observeEvent(input$componentButton,{
@@ -175,11 +252,7 @@ shinyServer(function(input,output,session){
     
   },ignoreInit=TRUE)
   
-  
-  
-  
-  
-  
+
   output$adj<-DT::renderDataTable({
     
     igtemp=values$ig
@@ -197,20 +270,13 @@ shinyServer(function(input,output,session){
   })
   
   
-  
-  
   output$uni<-renderDataTable({
     values$uniframe
     
   })
-  
-  
-  
-  
-  
-  
-  
-  #      output$adjacency<-renderDataTable({
+ 
+   
+  #output$adjacency<-renderDataTable({
   # 
   #   igtemp=values$ig
   #   x=adjacent_vertices(igtemp,1:gorder(igtemp))
@@ -218,9 +284,7 @@ shinyServer(function(input,output,session){
   # 
   # 
   # })
-  
-  
-  
+
   
   output$network <- renderVisNetwork({
     xx=input$visGraph
@@ -228,7 +292,7 @@ shinyServer(function(input,output,session){
     if (is.null(igtemp)) {return()}
     
     coords=layout_with_stress(igtemp)
-    
+    print(igtemp)
     data_vertices=get.data.frame(igtemp,what=c("vertices"))[,c("value","label","color.border","color.background","id")]
     data_edges=as_data_frame(igtemp,what=c("edges"))
     
@@ -262,7 +326,6 @@ shinyServer(function(input,output,session){
   },ignoreInit = TRUE)
   
   
-  
   output$selectbox1<-renderUI({
     req(fulldata())
     tempdata=fulldata()
@@ -274,10 +337,7 @@ shinyServer(function(input,output,session){
     selectInput("select1", label = "Select a column", choices = choice)
   })
   
-  
-  
-  
-  
+ 
   output$textbox1<-renderUI({
     tempdata=fulldata()
     req(fulldata())
@@ -290,19 +350,13 @@ shinyServer(function(input,output,session){
     
   }) 
   
-  
-  
-  
-  
-  
+ 
   xxchange <- reactive({
     paste(input$excludeButton ,input$includeButton)
   })
   
   
-  
-  observeEvent(xxchange(),
-               {
+  observeEvent(xxchange(),{
                  if(input$excludeButton[[1]]==0 & input$includeButton[[1]]==0) {return()}
                  tempdata=fulldata()  
                  
@@ -320,15 +374,14 @@ shinyServer(function(input,output,session){
                  
                  values$filterdf<-rbind(values$filterdf,x)
                  
-               })
+  })
   
   
   observeEvent(input$ResetButton,{
     values$filterdf<-data.frame(Columns=character(),Keys=character(),"I/E"=character())
   })
   
-  
-  
+
   observeEvent(input$FilterButton,{
     if (nrow(values$filterdf)==0) {return()}
     tempdata=isolate(fulldata())
@@ -363,13 +416,9 @@ shinyServer(function(input,output,session){
   
   
   
-  observeEvent(values$indexes,
-               
-               {
-                 values$uni=NULL 
-               }
-               ,ignoreInit = TRUE)
-  
+  observeEvent(values$indexes,{
+    values$uni=NULL 
+  },ignoreInit = TRUE)
   
   
   output$Indexes<-renderText({
@@ -378,13 +427,11 @@ shinyServer(function(input,output,session){
   })
   
   
-  
   output$filtertable<-renderTable({
     
     if (is.null(values$filterdf)){return()}
     values$filterdf 
   })
-  
   
   
   output$downloadGraph <- downloadHandler(
@@ -401,7 +448,6 @@ shinyServer(function(input,output,session){
       zip(file,files)
       
     })
-  
   
   
   observeEvent(input$getNeigh,{
@@ -421,15 +467,9 @@ shinyServer(function(input,output,session){
     })
   })
   
-  
-  
-  
-  
-  
+
   mstValues<-reactiveValues(edges=NULL,centroids=NULL,clusters=NULL,flag2=NULL,legenddf=NULL,legenddf2=NULL,shape=NULL)
-  
-  
-  
+ 
   
   observeEvent(input$mstButton,{
     
@@ -453,8 +493,6 @@ shinyServer(function(input,output,session){
     mstValues$shape=n[1:gorder(ig)]
     
     
-    
-    
     #V(mstig)$value=V(values$ig)$freq_cluster_id^(1/3.5)*1
     
     m=(1-edges$weight-min(1-edges$weight))/(max(1-edges$weight)-min(1-edges$weight))
@@ -467,20 +505,13 @@ shinyServer(function(input,output,session){
     
   },ignoreInit = TRUE)
   
-  
-  
-  
-  
-  
-  output$adj2<-DT::renderDataTable({
+
+ output$adj2<-DT::renderDataTable({
     req(mstValues$edges,isolate(values$ig))
     edges=mstValues$edges
     igtemp=isolate(values$ig)
     ig=graph_from_data_frame(edges,directed=FALSE,vertices=as_data_frame(igtemp,what="vertices")[,c("id","label")])
     x=adjacent_vertices(ig,1:gorder(ig))
-    
-    
-    
     
     myFun<-function(x,ig){
       x=as.numeric(x)
@@ -534,8 +565,6 @@ shinyServer(function(input,output,session){
       mstValues$legenddf2=data.frame("label"=unique(temp$name),"color"=colors[1:length(unique(temp$name))])}
       
       
-      
-      
       mstValues$flag2=c(1)
       visNetwork(cbind(as_data_frame(ig,what="vertices"),"color.background"=cbg,"color.border"=cbor,"shape"=mstValues$shape),cbind(as_data_frame(ig),"title"=paste("Edge weight: ",E(ig)$weight))) %>%
         visEdges(color=list(color="black",highlight="red"),labelHighlightBold=FALSE)%>%
@@ -560,7 +589,6 @@ shinyServer(function(input,output,session){
   })
   
   
-  
   output$mstLegend2<-renderPlot({
     if (is.null(mstValues$legenddf2)){return()}
     mstValues$legenddf2=mstValues$legenddf2[order(mstValues$legenddf2$label),]
@@ -570,6 +598,7 @@ shinyServer(function(input,output,session){
     mtext("Border",side=2, at=0.2, cex=2)
     
   })
+  
   
   output$Cendroids<-renderText({
     if (is.null(mstValues$centroids)) {return()}
@@ -581,7 +610,6 @@ shinyServer(function(input,output,session){
     if (is.null(mstValues$keyvertices)) {return()}
     mstValues$keyvertices
   })
-  
   
   
   observe({
@@ -602,11 +630,7 @@ shinyServer(function(input,output,session){
     updateSelectInput(session,"clusterColor", label = "Select an  attribute for nodes coloring", choices = choice)
     updateSelectInput(session,"centralColor", label = "Select an  attribute for nodes coloring ", choices = choice[-1],selected="dataName")
     updateSelectInput(session,"clusterSelect2",label="Select a clustering algorithm or a nodes attribute",choices=c(choice[-1],list("Louvain"="louvain",
-                                                                                                                                    "Fast Greedy"="fast_greedy",
-                                                                                                                                    "Label Propagation"="label_propagation",
-                                                                                                                                    "Leading Eigenvalue"="leading_eigenvalue",
-                                                                                                                                    "Walktrap"="walktrap",
-                                                                                                                                    "Edge Betweeness"="edge_betweenness")),selected = "louvain")
+                                                                                                                                 "Walktrap"="walktrap",                                                                                                                                  "Edge Betweeness"="edge_betweenness")),selected = "louvain")
   })
   
   
@@ -620,8 +644,6 @@ shinyServer(function(input,output,session){
     
     if ( is.null(isolate(mstValues$flag2)) | is.null(isolate({values$ig}))){return()}
     tempdata=as_data_frame(isolate({values$ig}),what="vertices")
-    
-    
     
     
     if (!is.null(clusterValues$member) & input$clusterMST)
@@ -652,7 +674,6 @@ shinyServer(function(input,output,session){
   })
   
   
-  
   observeEvent(input$nodeSelect2,{
     req(values$ig,input$nodeSelect2!="")
     
@@ -666,7 +687,6 @@ shinyServer(function(input,output,session){
     
     
   },ignoreInit = TRUE)
-  
   
   
   observeEvent(input$getNeigh2,{
@@ -689,14 +709,7 @@ shinyServer(function(input,output,session){
     })
   })
   
-  
-  
-  
-  
-  
-  
-  
-  
+
   output$downloadMST <- downloadHandler(
     filename = function() {
       paste("mst.csv")
@@ -706,11 +719,7 @@ shinyServer(function(input,output,session){
     }
   )
   
-  
-  
-  
-  
-  
+
   centralValues=reactiveValues(centralities=data.frame(),rankings=data.frame(),summary=data.frame(),legenddf=NULL)
   
   
@@ -767,18 +776,16 @@ shinyServer(function(input,output,session){
     
   },ignoreInit = TRUE)
   
+  
   output$Centralities<-DT::renderDataTable({
     if (is.null(centralValues$centralities)) {return()}
     centralValues$centralities
-    
-    
   })
+  
   
   output$Rankings<-DT::renderDataTable({
     if (is.null(centralValues$rankings)) {return()}
     centralValues$rankings
-    
-    
   })
   
   
@@ -786,8 +793,8 @@ shinyServer(function(input,output,session){
     
     if (is.null(centralValues$summary)) {return()}
     centralValues$summary
-    
   })
+  
   
   output$centralnetwork<-renderVisNetwork({
     
@@ -811,15 +818,11 @@ shinyServer(function(input,output,session){
     #   labs(title="betweenness centrality")
     # 
     # coords=cbind(x=p1$data$x,y=p1$data$y)
-    
-    
-    
+
     i=c()
     i[gorder(igtemp)+1]=""
     i[coords[,1]==0 & coords[,2]==0]="triangle"
-    
-    
-    
+
     temp=visualiseGenes(get.vertex.attribute(igtemp,"dataName"))
     centralValues$legenddf=data.frame("label"=unique(temp$name),"color"=colors[1:length(unique(temp$name))])
     updateSelectInput(session,"centralColor",selected="dataName")
@@ -838,9 +841,7 @@ shinyServer(function(input,output,session){
       visIgraphLayout(layout = "layout.norm", layoutMatrix = coords,smooth=FALSE,physics = FALSE) 
   })
   
-  
-  
-  
+
   observe({
     x=input$clusterCentral
     y=input$centralColor
@@ -908,11 +909,7 @@ shinyServer(function(input,output,session){
     
   },ignoreInit = TRUE)
   
-  
-  
-  
-  
-  
+
   #centralities=data.frame(),rankings=data.frame(),summary=data.frame()
   
   clusterValues=reactiveValues(member=NULL,comm1=NULL,comm2=NULL,legenddf=NULL,membership=NULL)
@@ -938,7 +935,6 @@ shinyServer(function(input,output,session){
   })
   
   
-  
   output$clusterNetwork<-renderVisNetwork({
     
     xx=input$visCluster
@@ -957,6 +953,9 @@ shinyServer(function(input,output,session){
     data_edges=as_data_frame(igtemp,what=c("edges"))
     
     
+    print(nrow(data_vertices))
+    print(length(bb$xy[,1]))
+    print(length(bb$xy[,2]))
     
     visNetwork(data_vertices, data_edges) %>%
       visOptions (nodesIdSelection = list("useLabels"=TRUE),highlightNearest = TRUE)   %>%
@@ -965,7 +964,6 @@ shinyServer(function(input,output,session){
       visInteraction(multiselect = TRUE)%>%
       visIgraphLayout(layout = "layout.norm", layoutMatrix = cbind(x=bb$xy[,1],y=bb$xy[,2]),smooth=FALSE,physics = FALSE) 
   })
-  
   
   
   observeEvent(paste(input$clusterColor,clusterValues$member),{
@@ -1019,9 +1017,7 @@ shinyServer(function(input,output,session){
     
     
   })
-  
-  
-  
+   
   
   output$intraHeatmap<-renderPlot({
     
@@ -1040,7 +1036,6 @@ shinyServer(function(input,output,session){
   })
   
   
-  
   output$silhouette<-renderPlot({
     if (is.null(clusterValues$member)) {return()}
     dis=as.matrix(isolate(values$ig[]))
@@ -1051,12 +1046,10 @@ shinyServer(function(input,output,session){
     print("silhouette")
     print(system.time({
       
-      plot(silhouette(dist=dis,x=clusterValues$member))}))
+      plot(cluster::silhouette(dist=dis,x=clusterValues$member))}))
   })
   
-  
-  
-  
+ 
   observe({
     igtemp=values$ig
     if (is.null(igtemp)){return()}
@@ -1129,12 +1122,6 @@ shinyServer(function(input,output,session){
   })
   
   
-  
-  
-  
-  
-  
-  
   observeEvent(input$nodeSelect4,{
     req(values$ig,input$nodeSelect4!="")
     
@@ -1145,49 +1132,98 @@ shinyServer(function(input,output,session){
       visNetworkProxy("clusterNetwork") %>%
         visSelectNodes(id =x)
     }
-    
-    
   },ignoreInit = TRUE)
   
   
-  
-output$downloadCluster <- downloadHandler(
+  output$downloadCluster <- downloadHandler(
     filename = function() {
       paste(input$clusterSelect,".csv",sep="")
     },
     content = function(file) {
       write.csv(clusterValues$member,file, row.names = FALSE,sep="\t")
-    })    
+  })    
   
+
+  observeEvent(input$runSSLBtn,{
+    if (length(cols_data)==0) return()
+    
+    w <- as.matrix(values$sim)
+    #all_ids <- values$indexes
+    
+    col <- input$sslClassesColnumSelect
+    
+    known.label <- which(!(is.na(fulldata()[[col]]) | fulldata()[[col]]=="") )
+    y <- as.numeric(fulldata()[[col]][known.label])
+
+    f1<-sslLabelProp(w,y,known.label,1000,centralities=c())
+    t <- f1$t
+    f1 <- f1$f
+    
+    num_labels <- unique(y)
+    for (i in 1:length(f1)){
+      if (!(round(f1[i]) %in% num_labels)){
+        temp <- which(abs(num_labels - f1[i]) == min(abs(num_labels - f1[i])))
+        f1[i] <- num_labels[temp[1]]
+      }
+    }
+    
+    out <- data.frame()
+    output$sslResultsMatrix<-DT::renderDataTable  ({
+      #if (is.null(clusterValues$comm1) | is.null(clusterValues$comm2)) {return()}
+     
+      if (is.factor(fulldata()[[col]])){
+        out <<- cbind(fulldata()[-known.label,], Predicted=levels(fulldata()[[col]])[round(f1[-known.label])])
+      }else{
+        out <<- cbind(fulldata()[-known.label,], Predicted=round(f1[-known.label]))
+      }
+      out
+      
+    },rownames=FALSE)
+    
+    output$downloadSSL_results <- downloadHandler(
+      filename = function() {
+        paste("sll_", input$sslAlgoSelect, "_results",".csv",sep="")
+      },
+      content = function(file) {
+        write.csv(out,file, row.names = FALSE,sep="\t")
+    })  
+    
+    # Evaluation
+    if (input$sslRefClassesSelect != "Not applicable"){
+      col2 <- input$sslRefClassesSelect
+      a1 <- length(which(abs(as.numeric(fulldata()[[col2]][-known.label])-f1[-known.label])<1))/length(as.vector(as.numeric(fulldata()[[col2]][-known.label]))) *100
+      print(a1)
+      print(paste0("Num of elements with diff from actual class < 1 : ", length(which(abs(as.numeric(fulldata()[[col2]][-known.label])-f1[-known.label])<1)) ))
+      print(paste0("Num of truly classified elements: ", length(which(round(f1[-known.label])==as.vector(as.numeric(fulldata()[[col2]][-known.label]))))))
+      
+      a <- NA
+      tryCatch({
+        a <- accuracy(x=as.vector(round(f1[-known.label])),y=as.vector(as.numeric(fulldata()[[col2]][-known.label])))$PCC
+      }, error=function(e){cat("ERROR :",conditionMessage(e), "\n")})
+      
+      #print("x-y=")
+      #print( (as.vector((f1[-known.label]))-as.vector(fulldata()[[col]][-known.label]))) 
+      print(paste0("Accuracy: ", a))
+      classification_eval_matrix <- as.data.frame(matrix(0, nrow = 1, ncol = 5))
+      colnames(classification_eval_matrix) <- c("Algorithm", "N_actual", "Accuracy", "Accuracy_with_margin_1", "Time")
+      classification_eval_matrix$Algorithm[1] <- "label.propagation"
+      classification_eval_matrix$N_actual[1] <- length(unique(y))
+      classification_eval_matrix$Accuracy[1] <- a
+      classification_eval_matrix$Accuracy_with_margin_1[1] <- a1
+      classification_eval_matrix$Time[1] <- t
+      
+      print(classification_eval_matrix)
+      
+      output$sslEvaluation<-DT::renderDataTable  ({
+        #if (is.null(clusterValues$comm1) | is.null(clusterValues$comm2)) {return()}
+        classification_eval_matrix
+        
+      },rownames=FALSE)
+      
+    }
+    
+  })
+
+
   
 })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

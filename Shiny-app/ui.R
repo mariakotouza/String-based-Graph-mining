@@ -1,20 +1,10 @@
 
 shinyUI(
   
-  
-  
-  
   fluidPage(theme=shinytheme(theme="flatly"),
             
-            
-            
             navbarPage("Biograph",
-                       
-                       
-                       
-                       
-                       
-                       
+                     
                        tabPanel("Graph Creation",
                                 
                                 
@@ -32,14 +22,10 @@ shinyUI(
                                                  h5(helpText("Select the read.table parameters below")),
                                                  checkboxInput(inputId = 'header', label = 'Header', value = TRUE),
                                                  br(),
-                                                 radioButtons(inputId = 'sep', label = 'Separator', choices = c(Comma=',',Semicolon=';',Tab='\t', Space=''), selected = ','),
+                                                 radioButtons(inputId = 'sep', label = 'Separator', choices = c(Comma=',',Semicolon=';',Tab='\t', Space=''), selected = '\t'),
                                                  br(),br(),br(),
                                                  br(),
-                                                 selectInput("seqSelect","Select the column of the sequence",choices=list("IMGT.gapped.nt.sequences.V.D.J.REGION"="IMGT.gapped.nt.sequences.V.D.J.REGION",
-                                                                                                                          "IMGT.gapped.AA.sequences.V.D.J.REGION"= "IMGT.gapped.AA.sequences.V.D.J.REGION",
-                                                                                                                          "IMGT.gapped.nt.sequences.V.J.REGION"="IMGT.gapped.nt.sequences.V.J.REGION", 
-                                                                                                                          "IMGT.gapped.AA.sequences.V.J.REGION"="IMGT.gapped.AA.sequences.V.J.REGION",
-                                                                                                                          "Summary.AA.JUNCTION"="Summary.AA.JUNCTION"),selected="Summary.AA.JUNCTION",width=350),
+                                                 selectInput("seqSelect","Select the column of the sequence",choices=sequences_for_distance_calc,selected="Summary.AA.JUNCTION",width=350),
                                                  selectInput("simSelect","Select the similarity metric",choices=list("OSA"="osa",
                                                                                                                      "Levenshtein"= "lv",
                                                                                                                      "Full DL"="dl", 
@@ -52,7 +38,29 @@ shinyUI(
                                                  
                                                  useShinyalert(),
                                                  actionButton("simButton","Calculate distance matrix"),
-                                                 sliderInput("slider", label = h3("Edge Threshold"), min = 0, max = 1, value = 0.25,step=0.001,width=500),
+                                                 
+                                                 br(),
+                                                 br(),
+                                                 selectInput("sparsification","Select the sparsification method",choices=c("knn","enn", "mknn"),selected="enn",width=350),
+                                                 
+                                                         
+                                                 checkboxInput(inputId = "delete_edges_of_diff_classes", label = "Delete edges that connect nodes of different classes", value = FALSE),
+                                                 
+                                                 conditionalPanel(
+                                                   condition = "input.sparsification == 'enn'",
+                                                   sliderInput("slider", label = h3("Edge Threshold"), min = 0, max = 1, value = 0.25,step=0.001,width=500)
+                                                 ),
+                                                 
+                                                 conditionalPanel(
+                                                   condition = "input.sparsification == 'knn'",
+                                                   numericInput("k_knn", "Number of neighbors", 10,  min = 0, max = 100000000, width="140px")
+                                                 ),
+                                                 
+                                                 conditionalPanel(
+                                                   condition = "input.sparsification == 'mknn'",
+                                                   numericInput("m_k_knn", "Number of neighbors", 10,  min = 0, max = 100000000, width="140px")
+                                                 ),
+                                                 
                                                  checkboxInput(inputId = "clusterId", label = "Unique sequence-clusterID combination", value = FALSE),
                                                  br(),
                                                  
@@ -132,21 +140,9 @@ shinyUI(
                                                 
                                                 hr("Filtered Indexes"),
                                                 verbatimTextOutput("Indexes"))
-                                       
-                                       
                                 )
-                                
-                                
-                                
-                                
                        ),
-                       
-                       
-                       
-                       
-                       
-                       
-                       
+
                        tabPanel("MST",
                                 fluidRow(
                                   
@@ -180,7 +176,6 @@ shinyUI(
                                 )
                                 
                        ),
-                       
                        
                        tabPanel("Centralities",
                                 fluidRow(
@@ -270,10 +265,7 @@ shinyUI(
                                                
                                              )
                                                  ),
-                                    
-                                    
-                                    
-                                    
+
                                     tabPanel("Clustering Crossover",
                                              selectInput("clusterSelect1","Select a clustering algorithm",list("Louvain"="louvain",
                                                                                                                "Fast Greedy"="fast_greedy",
@@ -308,6 +300,52 @@ shinyUI(
                                     )
                                                )
                                   )
+                       ),
+                       
+                       tabPanel("SSL",
+                                fluidRow(
+                                  
+                                  #add_busy_gif(src = "https://media.giphy.com/media/tXL4FHPSnVJ0A/giphy.gif", height = 120, width = 120),
+                                  
+                                  column(10,
+                                         div(style = "position:absolute;right:1em;", 
+                                             #column(2,actionButton("getNeigh2","Neighbours")),
+                                             column(2,downloadButton("downloadSSL_results", "Download SSL Results"),offset=1)
+                                             
+                                         ),
+                                         selectInput("sslAlgoSelect",choices=list("Label_prop"="Label propagation"),selected="Label_prop",label="Select the SSL algorithm"),
+                                         
+                                         uiOutput("uiSSLColNames"),
+                                         uiOutput("uiSSLRefNames"),
+                                         actionButton("runSSLBtn","Run SSL"),
+                                         conditionalPanel(
+                                           condition = "input.runSSLBtn",
+                                           br(),
+                                           DT::dataTableOutput("sslResultsMatrix"),
+                                           br(),
+                                           DT::dataTableOutput("sslEvaluation")
+                                         ),
+                                         
+                                         
+                                         #numericInput("nodeSelect2","Insert an id",0),
+                                         #visNetworkOutput("mstnetwork",height=1000),
+                                         #bsModal("modal2", "Neighbours", "getNeigh2", size = "large",
+                                        #         dataTableOutput("neigh2"))),
+                                  column(2,
+                                         br(),br()#,
+                                         #plotOutput("mstLegend",width=350),
+                                         #plotOutput("mstLegend2",width = 350)),  
+                                  #selectInput("colormst","Select an attribute for background coloring",choices=c(Default="Default"),selected = "Default"),
+                                  #selectInput("bordermst","Select an attribute for border coloring",choices=c(Default="Default"),selected = "Default"),
+                                  #checkboxInput("clusterMST","Coloring according to clustering",value=FALSE),
+                                  #actionButton("mstButton","Create MST"),
+                                  #hr("Central Nodes"),
+                                  #verbatimTextOutput("Cendroids"),
+                                  #br(),
+                                  #dataTableOutput("adj2")
+                                  
+                                )
+                                
                        )
                        
   )
@@ -317,7 +355,8 @@ shinyUI(
 
 
 
-
+)
+)
 
 
 
