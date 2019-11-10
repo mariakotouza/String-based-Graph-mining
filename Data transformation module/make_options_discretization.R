@@ -72,7 +72,6 @@ opt <- parse_args(OptionParser(option_list=option_list));
 packages <- c("plyr","dplyr","data.table","stringr","tidyr","entropy","ggplot2","ggseqlogo","gridExtra","cluster","stringdist","igraph","data.tree", "networkD3","xtable","tictoc","parallel")
 lapply(packages, library, character.only = TRUE)
 
-source("functions.R")
 source("run_discretization.R")
 run_discretization(datapath=opt$datapath, dataset_name=opt$dataset_name, numeric_file_name=opt$numeric_file_name, 
                    ids_file_name=opt$ids_file_name,
