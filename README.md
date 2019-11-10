@@ -15,7 +15,7 @@ install.packages(c("shiny","shinyFiles", "shinyBS", "shinyalert", "shinybusy", "
 #### Other packages for data processing and visualization
 
 ```
-install.packages(c("dplyr","stringdist","igraph","visNetwork","CINNA","DT", "gplots", "ggraph","graphlayouts","cluster","optrees","shallot","aricode","rfUtilities"))
+install.packages(c("dplyr","stringdist","igraph","visNetwork","CINNA","DT", "gplots", "ggraph","graphlayouts","cluster","optrees","shallot","aricode","rfUtilities", "NMF", "NMI", "NetPreProc", "graph"))
 ```
 
 ##  Run the Application
