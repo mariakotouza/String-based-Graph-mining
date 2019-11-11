@@ -11,11 +11,11 @@ shinyServer(function(input,output,session){
   # This reactive function will take the inputs from UI.R and use them for read.table() to read the data from the file. It returns the dataset in the form of a dataframe.
   # file$datapath -> gives the path of the file
   
-  shinyFileChoose(input,"files",roots=c(root='~'),filetypes=c('',"txt","csv"))
+  shinyFileChoose(input,"files",roots=c(root='.'),filetypes=c('',"txt","csv"))
   
   
   fulldata <- eventReactive(input$files,{
-    file1<-parseFilePaths(roots=c(root='~'),input$files)
+    file1<-parseFilePaths(roots=c(root='.'),input$files)
     #file1 <- input$file
     if(length(file1$datapath)==0){return()} 
     data=read.csv(file=as.character(file1$datapath), sep=input$sep, header = input$header)

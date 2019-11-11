@@ -15,7 +15,9 @@ install.packages(c("shiny","shinyFiles", "shinyBS", "shinyalert", "shinybusy", "
 #### Other packages for data processing and visualization
 
 ```
-install.packages(c("dplyr","stringdist","igraph","visNetwork","CINNA","DT", "gplots", "ggraph","graphlayouts","cluster","optrees","shallot","aricode","rfUtilities", "NMF", "NMI", "NetPreProc", "graph"))
+install.packages("BiocManager")
+BiocManager::install(c('graph'))
+install.packages(c("dplyr","stringdist","igraph","visNetwork","CINNA","DT", "gplots", "ggraph","graphlayouts","cluster","optrees","shallot","aricode","rfUtilities", "NMF", "NMI", "NetPreProc"))
 ```
 
 ##  Run the Application
@@ -23,7 +25,7 @@ install.packages(c("dplyr","stringdist","igraph","visNetwork","CINNA","DT", "gpl
 - You can run the R shiny application (*Shiny-App* folder) by pressing the **"Run App"** button, from either **ui.R** or **server.R** script.
 - Before running the app, you may change domain variable in **global.R** script, according to the application domain. For gene-sequence data for example, 'AA' is used as domain name.
 - In case that your data are not in script-based format, you may use the data transformation module to transform them.
-- Sample datasets from two application domains: 1) gene-sequence data and 2) document data , are given in the *Dataset* folder (coming soon)
+- Sample datasets from two application domains: 1) gene-sequence data and 2) document data , are given in the *Shiny-app/Dataset* folder
 
 ##  Run SGM as an R script-based tool 
 In order to run SGM as a script-based tool, except from the packages that are described above, the user need to install the optparse package.
