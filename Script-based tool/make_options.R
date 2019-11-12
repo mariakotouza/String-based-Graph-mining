@@ -4,7 +4,7 @@
 # order to be seamlessly integrated to the general variant calling pipeline 
 # which uses only system interactions.
 # To run the script using the command line using the default input arguments: Rscript --vanilla make_options.R
-# e.g. Rscript --vanilla make_options.R --pipeline 4
+# e.g. Rscript --vanilla make_options.R --pipeline 1
 # Help: Rscript --vanilla make_options.R --help 
 
 # Author: Maria Kotouza
@@ -13,7 +13,7 @@ suppressPackageStartupMessages(library("optparse"))
 
 option_list <- list(
   make_option(
-    opt_str=c("-w","--dataset_name"),
+    opt_str=c("-a","--dataset_name"),
     action="store",
     default="tr23.wc",
     help=paste0(
@@ -21,15 +21,15 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-a","--datapath"),
+    opt_str=c("-b","--datapath"),
     action="store",
-    default="data_discr/tr23.wc/udata_classes_grouped.txt",
+    default="output_discr/tr23.wc/udata_classes_grouped.txt",
     help=paste0(
       "The directory where the input file is located."
     )
   ),
   make_option(
-    opt_str=c("-b","--sep"),
+    opt_str=c("-c","--sep"),
     action="store",
     default="\t",
     help=paste0(
@@ -38,25 +38,25 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-c","--group_by_clusterId"),
+    opt_str=c("-d","--group_by_clusterId"),
     action="store",
     default="F",
     help="Group by sequence-cluster id: 'T' for True or 'F' for False."
   ),
   make_option(
-    opt_str=c("-v","--delete_edges_of_diff_classes"),
+    opt_str=c("-e","--delete_edges_of_diff_classes"),
     action="store",
     default="T",
     help="Delete edges that connect nodes of different classes: 'T' for True or 'F' for False."
   ),
   make_option(
-    opt_str=c("-d","--seqSelect"),
+    opt_str=c("-f","--seqSelect"),
     action="store",
     default="AA.JUNCTION",
     help="Select the column of the sequence to calculate the distance matrix."
   ),
   make_option(
-    opt_str=c("-e","--simSelect"),
+    opt_str=c("-g","--simSelect"),
     action="store",
     default="lv",
     help=paste0(
@@ -73,7 +73,7 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-s","--graph.type"),
+    opt_str=c("-y","--graph.type"),
     action="store",
     default="knn:10",
     help=paste0(
@@ -85,9 +85,9 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-n","--pipeline"),
+    opt_str=c("-i","--pipeline"),
     action="store",
-    default="4",
+    default="10",
     help=paste0(
       "Pipeline options:\n",
       "1. Filtering \n",
@@ -104,7 +104,7 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-g","--componentSelect"),
+    opt_str=c("-j","--componentSelect"),
     action="store",
     default="1",
     help=paste0(
@@ -112,7 +112,7 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-i","--excludeButton"),
+    opt_str=c("-k","--excludeButton"),
     action="store",
     default="F",
     help=paste0(
@@ -120,7 +120,7 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-j","--includeButton"),
+    opt_str=c("-l","--includeButton"),
     action="store",
     default="F",
     help=paste0(
@@ -128,7 +128,7 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-k","--select1"),
+    opt_str=c("-m","--select1"),
     action="store",
     default="AA.JUNCTION",
     help=paste0(
@@ -136,7 +136,7 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-l","--slider1"),
+    opt_str=c("-n","--slider1"),
     action="store",
     default="1",
     help=paste0(
@@ -144,7 +144,7 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-m","--text1"),
+    opt_str=c("-o","--text1"),
     action="store",
     default="",
     help=paste0(
@@ -152,7 +152,7 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-o","--mstAlgoSelect"),
+    opt_str=c("-p","--mstAlgoSelect"),
     action="store",
     default="Prim",
     help=paste0(
@@ -162,7 +162,7 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-p","--clusterMST_param"),
+    opt_str=c("-q","--clusterMST_param"),
     action="store",
     default="T;V1;V1",
     help=paste0(
@@ -174,7 +174,7 @@ option_list <- list(
     ) 
   ),
   make_option(
-    opt_str=c("-q","--centralities"),
+    opt_str=c("-r","--centralities"),
     action="store",
     default="F;Shortest.Paths.Betweenness.Centrality;F;AA.JUNCTION",
     help=paste0(
@@ -187,7 +187,7 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-r","--clustering"),
+    opt_str=c("-s","--clustering"),
     action="store",
     default="louvain;fast_greedy;label_propagation;leading_eigenvalue;walktrap",
     help=paste0(
@@ -198,7 +198,7 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-x","--clusterColor"),
+    opt_str=c("-t","--clusterColor"),
     action="store",
     default="Default",
     help=paste0(
@@ -207,7 +207,7 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-t","--plotHeat"),
+    opt_str=c("-u","--plotHeat"),
     action="store",
     default="T",
     help=paste0(
@@ -216,7 +216,7 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-u","--heatSelect"),
+    opt_str=c("-v","--heatSelect"),
     action="store",
     default="0",
     help=paste0(
@@ -225,7 +225,7 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-y","--percentage_labeled_data"),
+    opt_str=c("-w","--percentage_labeled_data"),
     action="store",
     default="0.30",
     help=paste0(
@@ -234,7 +234,7 @@ option_list <- list(
     )
   ),
   make_option(
-    opt_str=c("-i","--iter"),
+    opt_str=c("-x","--iter"),
     action="store",
     default="1",
     help=paste0(
@@ -244,7 +244,7 @@ option_list <- list(
   )
 );
 
-#other options that have not been used: -f
+#other options that have not been used: -y, -z
 
 
 opt <- parse_args(OptionParser(option_list=option_list));
