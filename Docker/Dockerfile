@@ -10,7 +10,9 @@ RUN apt-get update && apt-get install -y \
     libcurl4-gnutls-dev \
     libcairo2-dev/unstable \
     libxt-dev \
-    libssl-dev
+    libssl-dev \
+    libxml2-dev \
+    r-cran-xml
 
 # Download and install ShinyServer (latest version)
 RUN wget --no-verbose https://s3.amazonaws.com/rstudio-shiny-server-os-build/ubuntu-12.04/x86_64/VERSION -O "version.txt" && \
@@ -21,7 +23,6 @@ RUN wget --no-verbose https://s3.amazonaws.com/rstudio-shiny-server-os-build/ubu
 
 # Install R packages that are required
 # TODO: add further package if you need!
-RUN apt-get install r-cran-xml -y 
 #RUN R -e "install.packages('XML', repos = 'http://www.omegahat.org/R')"
 RUN R -e "install.packages('BiocManager')"
 RUN R -e "BiocManager::install(c('graph'))"
